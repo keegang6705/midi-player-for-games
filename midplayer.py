@@ -6,7 +6,7 @@ import json
 import win32gui
 import win32con
 from mido import MidiFile
-from pynput.keyboard import Controller
+from pynput.keyboard import Controller, Key
 from colorama import Fore, Style, init
 init(autoreset=True)
 
@@ -34,6 +34,44 @@ def set_console_topmost():
         ctypes.windll.user32.MoveWindow(hwnd, 0, 0, 400, 600, True)
     else:
         print("Cannot find console window handle")
+
+def parse_and_press_key(keyboard, key_string):
+    """
+    Parse key combinations like 'shift+z', 'ctrl+c', 'alt+x' and press them.
+    Supports single keys and combinations with shift, ctrl, alt modifiers.
+    """
+    parts = key_string.lower().split('+')
+    modifiers = []
+    main_key = None
+    
+    for part in parts:
+        if part == 'shift':
+            modifiers.append(Key.shift)
+        elif part == 'ctrl':
+            modifiers.append(Key.ctrl)
+        elif part == 'alt':
+            modifiers.append(Key.alt)
+        else:
+            main_key = part.strip()
+    
+    if not main_key:
+        print(f"Warning: Invalid key combination '{key_string}'")
+        return
+    
+    # Press all modifiers
+    for mod in modifiers:
+        keyboard.press(mod)
+    
+    # Press the main key
+    try:
+        keyboard.press(main_key)
+        keyboard.release(main_key)
+    except Exception as e:
+        print(f"Warning: Could not press key '{main_key}': {e}")
+    
+    # Release all modifiers
+    for mod in reversed(modifiers):
+        keyboard.release(mod)
 
 set_console_topmost()
 
@@ -255,8 +293,7 @@ def play_midi(file_path, note_to_key, selected_map_name, range_choice=1,
                     else:
                         key = note_to_key.get(note, get_nearest_key(note, note_to_key))
 
-                keyboard.press(key)
-                keyboard.release(key)
+                parse_and_press_key(keyboard, key)
 
     except KeyboardInterrupt:
         print("\nPlayback stopped by user")
@@ -276,8 +313,7 @@ def run_test_mapping(note_to_key, selected_map_name):
         for note in test_notes:
             key = note_to_key[note]
             print(f"Pressing note {note} mapped to key '{key}'")
-            keyboard.press(key)
-            keyboard.release(key)
+            parse_and_press_key(keyboard, key)
             time.sleep(0.5)
         print("Test completed!")
     except KeyboardInterrupt:
