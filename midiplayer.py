@@ -160,7 +160,8 @@ class MidiPlayer:
         return True
     
     def _on_key_press(self, key):
-        self.stop_playback = True
+        if key == Key.esc:
+            self.stop_playback = True
     
     def _start_key_listener(self):
         self.stop_playback = False
@@ -224,6 +225,7 @@ class MidiPlayer:
         return note_to_key[min(note_to_key.keys(), key=lambda x: abs(x - note))]
     
     def play_midi(self, filename, on_progress=None, on_status=None):
+        self.stop_playback = False  # Reset stop flag before starting playback
         keymap = self.get_current_keymap()
         if not keymap:
             if on_status:
@@ -306,6 +308,7 @@ class MidiPlayer:
             self._stop_key_listener()
     
     def test_keymap(self, on_progress=None, on_status=None):
+        self.stop_playback = False  # Reset stop flag before starting test
         keymap = self.get_current_keymap()
         if not keymap:
             if on_status:
