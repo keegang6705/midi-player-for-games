@@ -1,4 +1,5 @@
-import os
+import os,sys
+import sys
 import time
 import json
 from mido import MidiFile
@@ -15,6 +16,11 @@ class MidiPlayer:
         self.listener = None
         self.keyboard = Controller()
         self._load_files()
+
+    def resource_path(self,relative_path):
+        if hasattr(sys, '_MEIPASS'):
+            return os.path.join(sys._MEIPASS, relative_path)
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
     
     def _load_files(self):
         self.keymaps = self._load_keymaps()
@@ -22,7 +28,7 @@ class MidiPlayer:
     
     def _load_keymaps(self):
         try:
-            with open(self.keymap_file, 'r') as f:
+            with open(self.resource_path(self.keymap_file), 'r') as f:
                 return json.load(f)
         except FileNotFoundError:
             raise FileNotFoundError(f"Error: {self.keymap_file} not found!")
@@ -34,7 +40,7 @@ class MidiPlayer:
             "selected_keymap": None,
             "range_mismatch_handling": 1,
             "speed_multiplier": 1.0,
-            "target_duration": None,
+            "target_duration": 360,
             "midi_directories": [os.path.expanduser("~/Music")]
         }
         try:

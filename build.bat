@@ -1,0 +1,1 @@
+pyinstaller --onefile --windowed --add-data "keymap.json;." --add-data "languages.py;." --add-data "midiplayer.py;." --add-data "keegang.png;." --icon=col_studio.ico --manifest gui.exe.manifest gui.py
