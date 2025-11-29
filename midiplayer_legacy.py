@@ -98,10 +98,10 @@ def load_settings():
         "range_mismatch_handling": 1,
         "speed_multiplier": 1.0,
         "target_duration": None,
-        "midi_directory": "D:/Files/Audio/mid"
+        "midi_directories": ["D:/Files/Audio/mid"]
     }
     try:
-        with open('settings_legacy.json', 'r') as f:
+        with open('settings.json', 'r') as f:
             settings = json.load(f)
             return {**default_settings, **settings}
     except FileNotFoundError:
@@ -144,12 +144,13 @@ def format_duration(seconds):
     secs = int(seconds % 60)
     return f"{minutes:02d}:{secs:02d}"
 
-def scan_midi_files_range(files, folder, note_to_key):
+def scan_midi_files_range(file_folder_tuples, note_to_key):
+    """Scan MIDI files from multiple folders and return info with color coding."""
     results = []
     min_key = min(note_to_key.keys())
     max_key = max(note_to_key.keys())
 
-    for f in files:
+    for f, folder in file_folder_tuples:
         try:
             midi_path = os.path.join(folder, f)
             midi = MidiFile(midi_path)
@@ -171,11 +172,23 @@ def scan_midi_files_range(files, folder, note_to_key):
         except Exception as e:
             colored_name = f"{Fore.RED}{f}{Style.RESET_ALL} (error)"
 
-        results.append((f, colored_name))
+        results.append((f, folder, colored_name))
     return results
 
-def list_midi_files(folder="."):
-    return [f for f in os.listdir(folder) if f.lower().endswith((".mid", ".midi"))]
+def list_midi_files(folders):
+    """List all MIDI files from multiple folders."""
+    if isinstance(folders, str):
+        folders = [folders]
+    
+    midi_files = []
+    for folder in folders:
+        if os.path.isdir(folder):
+            try:
+                files = [f for f in os.listdir(folder) if f.lower().endswith((".mid", ".midi"))]
+                midi_files.extend([(f, folder) for f in files])
+            except Exception as e:
+                print(f"Error reading directory {folder}: {e}")
+    return midi_files
 
 def get_nearest_key(note, note_to_key):
     return note_to_key[min(note_to_key.keys(), key=lambda x: abs(x - note))]
@@ -408,24 +421,56 @@ def set_playback_speed(current_multiplier, current_duration):
     
     return current_multiplier, current_duration
 
-def set_midi_directory(current_directory):
-    clear_console()
-    print(f"\nCurrent MIDI Directory: {current_directory}")
-    print("Enter new directory path (or X to cancel):")
-    new_path = input("> ").strip()
-    
-    if new_path.upper() == 'X':
-        return current_directory
-    
-    if new_path.startswith('"') and new_path.endswith('"'):
-        new_path = new_path[1:-1]
-    
-    if os.path.isdir(new_path):
-        print(f"Directory changed to: {new_path}")
-        return new_path
-    else:
-        print("Error: Directory does not exist. Keeping current directory.")
-        return current_directory
+def set_midi_directories(current_directories):
+    """Manage list of MIDI directories."""
+    while True:
+        clear_console()
+        print("\nManage MIDI Directories:")
+        for i, dir_path in enumerate(current_directories, 1):
+            print(f"{i}. {dir_path}")
+        print("\nA. Add Directory")
+        print("R. Remove Directory")
+        print("X. Return to Settings")
+        
+        choice = input("\nSelect option: ").upper()
+        
+        if choice == 'X':
+            return current_directories
+        elif choice == 'A':
+            print("Enter new directory path (or X to cancel):")
+            new_path = input("> ").strip()
+            if new_path.upper() == 'X':
+                continue
+            if new_path.startswith('"') and new_path.endswith('"'):
+                new_path = new_path[1:-1]
+            if os.path.isdir(new_path):
+                if new_path not in current_directories:
+                    current_directories.append(new_path)
+                    print(f"Added: {new_path}")
+                else:
+                    print("This directory is already in the list.")
+            else:
+                print("Error: Directory does not exist.")
+            input("Press Enter to continue...")
+        elif choice == 'R':
+            if not current_directories:
+                print("No directories to remove.")
+            else:
+                print("\nSelect directory to remove:")
+                for i, dir_path in enumerate(current_directories, 1):
+                    print(f"{i}. {dir_path}")
+                try:
+                    remove_idx = int(input("Select number (or 0 to cancel): ")) - 1
+                    if remove_idx == -1:
+                        continue
+                    if 0 <= remove_idx < len(current_directories):
+                        removed = current_directories.pop(remove_idx)
+                        print(f"Removed: {removed}")
+                    else:
+                        print("Invalid selection.")
+                except ValueError:
+                    print("Invalid input.")
+            input("Press Enter to continue...")
 
 def main():
     run_as_admin()
@@ -450,12 +495,12 @@ def main():
         if choice == 1:
             while True:
                 clear_console()
-                midi_files = list_midi_files(settings["midi_directory"])
-                midi_info = scan_midi_files_range(midi_files, settings["midi_directory"], note_to_key)
+                midi_files = list_midi_files(settings["midi_directories"])
+                midi_info = scan_midi_files_range(midi_files, note_to_key)
                 print("\nAvailable MIDI files and options:")
                 print(f"{Fore.CYAN}0. Run test mapping keys{Style.RESET_ALL}")
                 print(f"{Fore.CYAN}X. Return to Main Menu{Style.RESET_ALL}")
-                for i, (_, colored_name) in enumerate(midi_info):
+                for i, (_, _, colored_name) in enumerate(midi_info):
                     print(f"{i + 1}. {colored_name}")
                 
                 selection = input("\nSelect MIDI file or option: ").upper()
@@ -466,7 +511,8 @@ def main():
                     if index == 0:
                         run_test_mapping(note_to_key, selected_map_name)
                     elif 1 <= index <= len(midi_info):
-                        file_path = os.path.join(settings["midi_directory"], midi_info[index - 1][0])
+                        filename, folder, _ = midi_info[index - 1]
+                        file_path = os.path.join(folder, filename)
                         play_midi(file_path, note_to_key, selected_map_name, 
                                 settings["range_mismatch_handling"], 
                                 settings["speed_multiplier"], 
@@ -494,7 +540,7 @@ def main():
                         settings["speed_multiplier"], settings["target_duration"])
                     save_settings(settings)
                 elif settings_choice == 4:
-                    settings["midi_directory"] = set_midi_directory(settings["midi_directory"])
+                    settings["midi_directories"] = set_midi_directories(settings["midi_directories"])
                     save_settings(settings)
         
         else:
