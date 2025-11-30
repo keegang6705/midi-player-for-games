@@ -7,10 +7,35 @@ import win32gui
 import win32con
 import threading
 from mido import MidiFile
-from pynput.keyboard import Controller, Key, Listener
 from colorama import Fore, Style, init
 init(autoreset=True)
 
+SCANCODE_MAP = {
+    'a': 0x1E, 'b': 0x30, 'c': 0x2E, 'd': 0x20, 'e': 0x12, 'f': 0x21,
+    'g': 0x22, 'h': 0x23, 'i': 0x17, 'j': 0x24, 'k': 0x25, 'l': 0x26,
+    'm': 0x32, 'n': 0x31, 'o': 0x18, 'p': 0x19, 'q': 0x10, 'r': 0x13,
+    's': 0x1F, 't': 0x14, 'u': 0x16, 'v': 0x2F, 'w': 0x11, 'x': 0x2D,
+    'y': 0x15, 'z': 0x2C,
+    '0': 0x0B, '1': 0x02, '2': 0x03, '3': 0x04, '4': 0x05, '5': 0x06,
+    '6': 0x07, '7': 0x08, '8': 0x09, '9': 0x0A,
+    'space': 0x39, 'enter': 0x1C, 'tab': 0x0F, 'backspace': 0x0E,
+    'escape': 0x01, 'delete': 0xE053, 'insert': 0xE052,
+    'up': 0xE048, 'down': 0xE050, 'left': 0xE04B, 'right': 0xE04D,
+    'home': 0xE047, 'end': 0xE04F, 'pageup': 0xE049, 'pagedown': 0xE051,
+    'f1': 0x3B, 'f2': 0x3C, 'f3': 0x3D, 'f4': 0x3E, 'f5': 0x3F,
+    'f6': 0x40, 'f7': 0x41, 'f8': 0x42, 'f9': 0x43, 'f10': 0x44,
+    'f11': 0x57, 'f12': 0x58,
+}
+
+MODIFIER_SCANCODES = {
+    'shift': 0x2A,
+    'ctrl': 0x1D,
+    'alt': 0x38
+}
+
+KEYEVENTF_KEYUP = 0x0002
+KEYEVENTF_SCANCODE = 0x0008
+KEYEVENTF_EXTENDEDKEY = 0x0001
 
 def run_as_admin():
     if ctypes.windll.shell32.IsUserAnAdmin():
@@ -36,43 +61,41 @@ def set_console_topmost():
     else:
         print("Cannot find console window handle")
 
-def parse_and_press_key(keyboard, key_string):
-    """
-    Parse key combinations like 'shift+z', 'ctrl+c', 'alt+x' and press them.
-    Supports single keys and combinations with shift, ctrl, alt modifiers.
-    """
+def parse_and_press_key(key_string):
     parts = key_string.lower().split('+')
     modifiers = []
     main_key = None
     
     for part in parts:
-        if part == 'shift':
-            modifiers.append(Key.shift)
-        elif part == 'ctrl':
-            modifiers.append(Key.ctrl)
-        elif part == 'alt':
-            modifiers.append(Key.alt)
+        part = part.strip()
+        if part in MODIFIER_SCANCODES:
+            modifiers.append(part)
         else:
-            main_key = part.strip()
+            main_key = part
     
-    if not main_key:
+    if not main_key or main_key not in SCANCODE_MAP:
         print(f"Warning: Invalid key combination '{key_string}'")
         return
     
-    # Press all modifiers
+    scancode = SCANCODE_MAP[main_key]
+    is_extended = scancode > 0xFF
+    
     for mod in modifiers:
-        keyboard.press(mod)
+        mod_scancode = MODIFIER_SCANCODES[mod]
+        ctypes.windll.user32.keybd_event(0, mod_scancode, KEYEVENTF_SCANCODE, 0)
     
-    # Press the main key
-    try:
-        keyboard.press(main_key)
-        keyboard.release(main_key)
-    except Exception as e:
-        print(f"Warning: Could not press key '{main_key}': {e}")
+    flags = KEYEVENTF_SCANCODE
+    if is_extended:
+        flags |= KEYEVENTF_EXTENDEDKEY
+        scancode = scancode & 0xFF
     
-    # Release all modifiers
+    ctypes.windll.user32.keybd_event(0, scancode, flags, 0)
+    time.sleep(0.01)
+    ctypes.windll.user32.keybd_event(0, scancode, flags | KEYEVENTF_KEYUP, 0)
+    
     for mod in reversed(modifiers):
-        keyboard.release(mod)
+        mod_scancode = MODIFIER_SCANCODES[mod]
+        ctypes.windll.user32.keybd_event(0, mod_scancode, KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP, 0)
 
 set_console_topmost()
 
@@ -145,7 +168,6 @@ def format_duration(seconds):
     return f"{minutes:02d}:{secs:02d}"
 
 def scan_midi_files_range(file_folder_tuples, note_to_key):
-    """Scan MIDI files from multiple folders and return info with color coding."""
     results = []
     min_key = min(note_to_key.keys())
     max_key = max(note_to_key.keys())
@@ -176,7 +198,6 @@ def scan_midi_files_range(file_folder_tuples, note_to_key):
     return results
 
 def list_midi_files(folders):
-    """List all MIDI files from multiple folders."""
     if isinstance(folders, str):
         folders = [folders]
     
@@ -267,7 +288,6 @@ def play_midi(file_path, note_to_key, selected_map_name, range_choice=1,
     old_min = min(old_notes) if old_notes else 0
     old_max = max(old_notes) if old_notes else 0
 
-    keyboard = Controller()
     time_cursor = 0.0
     start_time = time.time()
 
@@ -307,7 +327,7 @@ def play_midi(file_path, note_to_key, selected_map_name, range_choice=1,
                     else:
                         key = note_to_key.get(note, get_nearest_key(note, note_to_key))
 
-                parse_and_press_key(keyboard, key)
+                parse_and_press_key(key)
 
     except KeyboardInterrupt:
         print("\nPlayback stopped by user")
@@ -316,7 +336,6 @@ def play_midi(file_path, note_to_key, selected_map_name, range_choice=1,
 
 def run_test_mapping(note_to_key, selected_map_name):
     test_notes = sorted(note_to_key.keys()) 
-    keyboard = Controller()
 
     clear_console()
     print(f"\nRunning test for mapping '{selected_map_name}'...")
@@ -327,7 +346,7 @@ def run_test_mapping(note_to_key, selected_map_name):
         for note in test_notes:
             key = note_to_key[note]
             print(f"Pressing note {note} mapped to key '{key}'")
-            parse_and_press_key(keyboard, key)
+            parse_and_press_key(key)
             time.sleep(0.5)
         print("Test completed!")
     except KeyboardInterrupt:
@@ -422,7 +441,6 @@ def set_playback_speed(current_multiplier, current_duration):
     return current_multiplier, current_duration
 
 def set_midi_directories(current_directories):
-    """Manage list of MIDI directories."""
     while True:
         clear_console()
         print("\nManage MIDI Directories:")
