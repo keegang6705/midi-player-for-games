@@ -1,10 +1,36 @@
-import os,sys
+import os
 import sys
 import time
 import json
+import ctypes
 from mido import MidiFile
-from pynput.keyboard import Controller, Key, Listener
 
+SCANCODE_MAP = {
+    'a': 0x1E, 'b': 0x30, 'c': 0x2E, 'd': 0x20, 'e': 0x12, 'f': 0x21,
+    'g': 0x22, 'h': 0x23, 'i': 0x17, 'j': 0x24, 'k': 0x25, 'l': 0x26,
+    'm': 0x32, 'n': 0x31, 'o': 0x18, 'p': 0x19, 'q': 0x10, 'r': 0x13,
+    's': 0x1F, 't': 0x14, 'u': 0x16, 'v': 0x2F, 'w': 0x11, 'x': 0x2D,
+    'y': 0x15, 'z': 0x2C,
+    '0': 0x0B, '1': 0x02, '2': 0x03, '3': 0x04, '4': 0x05, '5': 0x06,
+    '6': 0x07, '7': 0x08, '8': 0x09, '9': 0x0A,
+    'space': 0x39, 'enter': 0x1C, 'tab': 0x0F, 'backspace': 0x0E,
+    'escape': 0x01, 'delete': 0xE053, 'insert': 0xE052,
+    'up': 0xE048, 'down': 0xE050, 'left': 0xE04B, 'right': 0xE04D,
+    'home': 0xE047, 'end': 0xE04F, 'pageup': 0xE049, 'pagedown': 0xE051,
+    'f1': 0x3B, 'f2': 0x3C, 'f3': 0x3D, 'f4': 0x3E, 'f5': 0x3F,
+    'f6': 0x40, 'f7': 0x41, 'f8': 0x42, 'f9': 0x43, 'f10': 0x44,
+    'f11': 0x57, 'f12': 0x58,
+}
+
+MODIFIER_SCANCODES = {
+    'shift': 0x2A,
+    'ctrl': 0x1D,
+    'alt': 0x38
+}
+
+KEYEVENTF_KEYUP = 0x0002
+KEYEVENTF_SCANCODE = 0x0008
+KEYEVENTF_EXTENDEDKEY = 0x0001
 
 class MidiPlayer:
     def __init__(self, keymap_file='keymap.json', settings_file='settings.json'):
@@ -13,8 +39,6 @@ class MidiPlayer:
         self.keymaps = {}
         self.settings = {}
         self.stop_playback = False
-        self.listener = None
-        self.keyboard = Controller()
         self._load_files()
 
     def resource_path(self,relative_path):
@@ -140,44 +164,38 @@ class MidiPlayer:
         parts = key_string.lower().split('+')
         modifiers = []
         main_key = None
+        
         for part in parts:
             part = part.strip()
-            if part == 'shift':
-                modifiers.append(Key.shift)
-            elif part == 'ctrl':
-                modifiers.append(Key.ctrl)
-            elif part == 'alt':
-                modifiers.append(Key.alt)
+            if part in MODIFIER_SCANCODES:
+                modifiers.append(part)
             else:
                 main_key = part
-        if not main_key:
+        
+        if not main_key or main_key not in SCANCODE_MAP:
             return False
+        
+        scancode = SCANCODE_MAP[main_key]
+        is_extended = scancode > 0xFF
+        
         for mod in modifiers:
-            self.keyboard.press(mod)
-        try:
-            self.keyboard.press(main_key)
-            self.keyboard.release(main_key)
-        except Exception:
-            for mod in reversed(modifiers):
-                self.keyboard.release(mod)
-            return False
+            mod_scancode = MODIFIER_SCANCODES[mod]
+            ctypes.windll.user32.keybd_event(0, mod_scancode, KEYEVENTF_SCANCODE, 0)
+        
+        flags = KEYEVENTF_SCANCODE
+        if is_extended:
+            flags |= KEYEVENTF_EXTENDEDKEY
+            scancode = scancode & 0xFF
+        
+        ctypes.windll.user32.keybd_event(0, scancode, flags, 0)
+        time.sleep(0.01)
+        ctypes.windll.user32.keybd_event(0, scancode, flags | KEYEVENTF_KEYUP, 0)
+        
         for mod in reversed(modifiers):
-            self.keyboard.release(mod)
+            mod_scancode = MODIFIER_SCANCODES[mod]
+            ctypes.windll.user32.keybd_event(0, mod_scancode, KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP, 0)
+        
         return True
-    
-    def _on_key_press(self, key):
-        if key == Key.esc:
-            self.stop_playback = True
-    
-    def _start_key_listener(self):
-        self.stop_playback = False
-        self.listener = Listener(on_press=self._on_key_press)
-        self.listener.start()
-    
-    def _stop_key_listener(self):
-        if self.listener:
-            self.listener.stop()
-            self.listener = None
     
     def get_midi_info(self, filename):
         try:
@@ -231,7 +249,7 @@ class MidiPlayer:
         return note_to_key[min(note_to_key.keys(), key=lambda x: abs(x - note))]
     
     def play_midi(self, filename, on_progress=None, on_status=None):
-        self.stop_playback = False  # Reset stop flag before starting playback
+        self.stop_playback = False
         keymap = self.get_current_keymap()
         if not keymap:
             if on_status:
@@ -271,7 +289,6 @@ class MidiPlayer:
         old_min = min(old_notes) if old_notes else 0
         old_max = max(old_notes) if old_notes else 0
         min_key, max_key = self.get_keymap_range()
-        self._start_key_listener()
         time_cursor = 0.0
         start_time = time.time()
         if on_status:
@@ -310,18 +327,15 @@ class MidiPlayer:
             if on_status:
                 on_status(f"Error: {e}")
             return False
-        finally:
-            self._stop_key_listener()
     
     def test_keymap(self, on_progress=None, on_status=None):
-        self.stop_playback = False  # Reset stop flag before starting test
+        self.stop_playback = False
         keymap = self.get_current_keymap()
         if not keymap:
             if on_status:
                 on_status("No keymap")
             return False
         test_notes = sorted(keymap.keys())
-        self._start_key_listener()
         if on_status:
             on_status(f"Testing {self.get_keymap_name()}")
         try:
@@ -344,8 +358,6 @@ class MidiPlayer:
             if on_status:
                 on_status(f"Error: {e}")
             return False
-        finally:
-            self._stop_key_listener()
 
 
 if __name__ == "__main__":
