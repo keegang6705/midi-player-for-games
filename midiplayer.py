@@ -326,14 +326,17 @@ class MidiPlayer:
                     on_status(f"Starting in {i}...")
                 time.sleep(1)
         
+        # Reload MIDI and count messages
+        midi = MidiFile(filepath)
+        all_messages = list(midi)
+        total_msgs = len(all_messages)
+        
         time_cursor = 0.0
         start_time = time.time()
-        total_msgs = sum(1 for _ in midi)
-        midi = MidiFile(filepath)
         if on_status:
             on_status(f"Playing {filename}")
         try:
-            for msg_index, msg in enumerate(midi):
+            for msg_index, msg in enumerate(all_messages):
                 if self.stop_playback:
                     if on_status:
                         on_status("Stopped")
@@ -341,7 +344,7 @@ class MidiPlayer:
                 time_cursor += msg.time
                 elapsed = time.time() - start_time
                 sleep_time = time_cursor - elapsed
-                if sleep_time > 0:
+                if sleep_time > 0.001:
                     time.sleep(sleep_time / speed_multiplier)
                 if msg.type == 'note_on' and msg.velocity > 0 and hasattr(msg, 'note'):
                     note = msg.note
