@@ -145,7 +145,7 @@ class MidiPlayer:
         }
     
     def set_range_mismatch_handling(self, mode):
-        if mode in (1, 2, 3):
+        if mode in (1, 2, 3, 4, 5, 6):
             self.settings["range_mismatch_handling"] = mode
             self.save_settings()
             return True
@@ -252,6 +252,25 @@ class MidiPlayer:
     def get_nearest_key(note, note_to_key):
         return note_to_key[min(note_to_key.keys(), key=lambda x: abs(x - note))]
     
+    @staticmethod
+    def _find_optimal_range(notes, min_key, max_key):
+        """Find the range in MIDI notes that maps to the most keymap keys."""
+        if not notes:
+            return 0, 127
+        
+        unique_notes = sorted(set(notes))
+        best_range = (unique_notes[0], unique_notes[-1])
+        best_count = 0
+        
+        for i, start_note in enumerate(unique_notes):
+            for end_note in unique_notes[i:]:
+                count = len([n for n in unique_notes if start_note <= n <= end_note])
+                if count > best_count:
+                    best_count = count
+                    best_range = (start_note, end_note)
+        
+        return best_range
+    
     def play_midi(self, filename, on_progress=None, on_status=None):
         self.stop_playback = False
         keymap = self.get_current_keymap()
@@ -293,6 +312,11 @@ class MidiPlayer:
         old_min = min(old_notes) if old_notes else 0
         old_max = max(old_notes) if old_notes else 0
         min_key, max_key = self.get_keymap_range()
+        
+        # Mode 6: Find optimal range to get most keys
+        if range_mode == 6:
+            old_min, old_max = self._find_optimal_range(old_notes, min_key, max_key)
+        
         time_cursor = 0.0
         start_time = time.time()
         total_msgs = sum(1 for _ in midi)
@@ -319,10 +343,25 @@ class MidiPlayer:
                         key = keymap.get(scaled_note, self.get_nearest_key(scaled_note, keymap))
                     elif range_mode == 2:
                         key = keymap.get(note, self.get_nearest_key(note, keymap))
-                    else:
+                    elif range_mode == 3:
                         if note < min_key or note > max_key:
                             continue
                         key = keymap.get(note, self.get_nearest_key(note, keymap))
+                    elif range_mode == 4:
+                        offset = min_key - old_min
+                        mapped_note = note + offset
+                        if mapped_note > max_key:
+                            continue
+                        key = keymap.get(mapped_note, self.get_nearest_key(mapped_note, keymap))
+                    elif range_mode == 5:
+                        offset = max_key - old_max
+                        mapped_note = note + offset
+                        if mapped_note < min_key:
+                            continue
+                        key = keymap.get(mapped_note, self.get_nearest_key(mapped_note, keymap))
+                    elif range_mode == 6:
+                        scaled_note = self.scale_note(note, old_min, old_max, min_key, max_key)
+                        key = keymap.get(scaled_note, self.get_nearest_key(scaled_note, keymap))
                     self.parse_and_press_key(key)
                 if on_progress and total_msgs > 0:
                     progress = int((msg_index / total_msgs) * 100)

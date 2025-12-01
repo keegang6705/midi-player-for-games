@@ -229,7 +229,10 @@ class MidiPlayerGUI(QMainWindow):
         self.range_combo.addItems([
             translate('mode_scale', self.lang),
             translate('mode_nearest', self.lang),
-            translate('mode_discard', self.lang)
+            translate('mode_discard', self.lang),
+            translate('mode_align_low', self.lang),
+            translate('mode_align_high', self.lang),
+            translate('mode_optimal', self.lang)
         ])
         self.range_combo.setCurrentIndex(self.player.get_range_mismatch_handling() - 1)
         self.range_combo.currentIndexChanged.connect(self.on_range_changed)

@@ -28,6 +28,9 @@ TRANSLATIONS = {
         'mode_scale': 'Scale notes to fit range',
         'mode_nearest': 'Map to nearest key',
         'mode_discard': 'Discard out of range notes',
+        'mode_align_low': 'Align to Low Key',
+        'mode_align_high': 'Align to High Key',
+        'mode_optimal': 'Find Optimal Range',
         'mode_speed_mult': 'Use Speed Multiplier (0.1x - 4.0x)',
         'mode_target_dur': 'Use Target Duration (seconds)',
         'group_directory': 'MIDI Directory',
@@ -53,7 +56,7 @@ TRANSLATIONS = {
         'ready': 'พร้อม',
         'tab_player': 'เล่น',
         'tab_settings': 'การตั้งค่า',
-        'tab_about': 'เกี่ยวกับโปรแกรม',
+        'tab_about': 'เกี่ยวกับ',
 
         'label_keymap': 'ผังแป้นพิมพ์:',
         'label_midi_files': 'ไฟล์ MIDI:',
@@ -80,6 +83,9 @@ TRANSLATIONS = {
         'mode_scale': 'ปรับขนาดโน้ตให้พอดีกับช่วง',
         'mode_nearest': 'แมปไปยังคีย์ที่ใกล้ที่สุด',
         'mode_discard': 'ตัดโน้ตที่อยู่นอกช่วงทิ้ง',
+        'mode_align_low': 'ชิดแป้นต่ำสุด',
+        'mode_align_high': 'ชิดแป้นสูงสุด',
+        'mode_optimal': 'หาช่วงที่เหมาะสมที่สุด',
         'mode_speed_mult': 'ใช้โหมดตัวคูณความเร็ว (0.1x - 4.0x)',
         'mode_target_dur': 'ใช้โหมดกำหนดระยะเวลา (วินาที)',
 
