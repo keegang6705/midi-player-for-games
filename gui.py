@@ -79,6 +79,8 @@ class MidiPlayerGUI(QMainWindow):
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
         self.setStyleSheet(self.get_stylesheet())
+        if self.player.settings.get('window_topmost', False):
+            self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
@@ -186,7 +188,8 @@ class MidiPlayerGUI(QMainWindow):
         mode_group.addButton(speed_radio, 0)
         mode_group.addButton(duration_radio, 1)
         playback = self.player.get_playback_speed()
-        if playback.get('target_duration'):
+        playback_mode = self.player.settings.get('playback_mode', 0)
+        if playback_mode == 1:
             duration_radio.setChecked(True)
         else:
             speed_radio.setChecked(True)
@@ -235,6 +238,35 @@ class MidiPlayerGUI(QMainWindow):
         range_layout.addRow(range_label, self.range_combo)
         range_group.setLayout(range_layout)
         layout.addWidget(range_group)
+        misc_group = QGroupBox("Misc Settings")
+        misc_group.setFont(QFont(None, 12))
+        misc_layout = QFormLayout()
+        topmost_radio_yes = QRadioButton("Yes")
+        topmost_radio_no = QRadioButton("No")
+        topmost_group = QButtonGroup()
+        topmost_group.addButton(topmost_radio_yes, 1)
+        topmost_group.addButton(topmost_radio_no, 0)
+        if self.player.settings.get('window_topmost', False):
+            topmost_radio_yes.setChecked(True)
+        else:
+            topmost_radio_no.setChecked(True)
+        topmost_radio_yes.setFont(QFont(None, 10))
+        topmost_radio_no.setFont(QFont(None, 10))
+        topmost_group.buttonClicked.connect(self.on_topmost_changed)
+        topmost_layout = QHBoxLayout()
+        topmost_layout.addWidget(topmost_radio_yes)
+        topmost_layout.addWidget(topmost_radio_no)
+        topmost_layout.addStretch()
+        misc_layout.addRow("Window Topmost:", topmost_layout)
+        self.countdown_spin = QSpinBox()
+        self.countdown_spin.setFont(QFont(None, 11))
+        self.countdown_spin.setMinimum(0)
+        self.countdown_spin.setMaximum(10)
+        self.countdown_spin.setValue(self.player.settings.get('countdown_duration', 3))
+        self.countdown_spin.valueChanged.connect(self.on_countdown_changed)
+        misc_layout.addRow("Countdown (seconds):", self.countdown_spin)
+        misc_group.setLayout(misc_layout)
+        layout.addWidget(misc_group)
         dir_group = QGroupBox(translate('group_directory', self.lang))
         dir_group.setFont(QFont(None, 12))
         dir_layout = QVBoxLayout()
@@ -461,6 +493,7 @@ class MidiPlayerGUI(QMainWindow):
         self.progress_bar.setValue(0)
         self.playback_thread = PlaybackThread(self.player, filename)
         self.playback_thread.status_changed.connect(self.on_status_changed)
+        self.playback_thread.progress_updated.connect(self.on_playback_progress)
         self.playback_thread.playback_finished.connect(self.on_playback_finished)
         self.playback_thread.start()
     
@@ -515,6 +548,8 @@ class MidiPlayerGUI(QMainWindow):
         else:
             self.speed_multiplier.setEnabled(False)
             self.target_duration.setEnabled(True)
+        self.player.settings['playback_mode'] = mode_id
+        self.player.save_settings()
     
     def on_language_changed(self, index):
         new_lang = 'en' if index == 0 else 'th'
@@ -527,8 +562,27 @@ class MidiPlayerGUI(QMainWindow):
     def on_range_changed(self, index):
         self.player.set_range_mismatch_handling(index + 1)
     
+    def on_topmost_changed(self, button):
+        is_topmost = button.text() == "Yes"
+        self.player.settings['window_topmost'] = is_topmost
+        self.player.save_settings()
+        if is_topmost:
+            self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+        else:
+            self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
+        self.show()
+    
+    def on_countdown_changed(self, value):
+        self.player.settings['countdown_duration'] = value
+        self.player.save_settings()
+    
     def on_status_changed(self, status):
         self.status_label.setText(status)
+    
+    def on_playback_progress(self, msg_index):
+        """Update progress bar during playback (0-100)."""
+        self.progress_bar.setMaximum(100)
+        self.progress_bar.setValue(msg_index)
     
     def on_playback_finished(self, completed):
         self.play_btn.setEnabled(True)
@@ -536,8 +590,8 @@ class MidiPlayerGUI(QMainWindow):
         self.progress_bar.setVisible(False)
     
     def on_test_progress(self, current, total):
-        self.progress_bar.setMaximum(total)
-        self.progress_bar.setValue(current + 1)
+        self.progress_bar.setMaximum(100)
+        self.progress_bar.setValue(current)
     
     def on_test_finished(self, completed):
         self.progress_bar.setVisible(False)

@@ -65,7 +65,11 @@ class MidiPlayer:
             "range_mismatch_handling": 1,
             "speed_multiplier": 1.0,
             "target_duration": 360,
-            "midi_directories": [os.path.expanduser("~/Music")]
+            "playback_mode": 0,
+            "midi_directories": [os.path.expanduser("~/Music")],
+            "selected_language": "en",
+            "window_topmost": True,
+            "countdown_duration": 3
         }
         try:
             with open(self.settings_file, 'r') as f:
@@ -291,6 +295,8 @@ class MidiPlayer:
         min_key, max_key = self.get_keymap_range()
         time_cursor = 0.0
         start_time = time.time()
+        total_msgs = sum(1 for _ in midi)
+        midi = MidiFile(filepath)
         if on_status:
             on_status(f"Playing {filename}")
         try:
@@ -318,8 +324,9 @@ class MidiPlayer:
                             continue
                         key = keymap.get(note, self.get_nearest_key(note, keymap))
                     self.parse_and_press_key(key)
-                if on_progress:
-                    on_progress(msg_index)
+                if on_progress and total_msgs > 0:
+                    progress = int((msg_index / total_msgs) * 100)
+                    on_progress(progress)
             if on_status:
                 on_status("Completed")
             return True
@@ -350,7 +357,8 @@ class MidiPlayer:
                 self.parse_and_press_key(key)
                 time.sleep(0.25)
                 if on_progress:
-                    on_progress(index, len(test_notes))
+                    progress = int(((index + 1) / len(test_notes)) * 100)
+                    on_progress(progress, 100)
             if on_status:
                 on_status("Completed")
             return True
