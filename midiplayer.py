@@ -62,7 +62,7 @@ class MidiPlayer:
     def _load_settings(self):
         default_settings = {
             "selected_keymap": None,
-            "range_mismatch_handling": 1,
+            "range_mismatch_handling": 3,
             "speed_multiplier": 1.0,
             "target_duration": 360,
             "playback_mode": 0,
