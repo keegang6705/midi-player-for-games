@@ -47,7 +47,7 @@ cd midi-player-for-games
 pip install -r requirements.txt
 ```
 
-3. Run the GUI:
+3. Run the GUI( admin required to play music on most game):
 ```bash
 python gui.py
 ```
@@ -260,24 +260,6 @@ The executable will be in the `dist/gui/` folder.
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Changelog
-
-### Version 2.1
-- Improved playback timing accuracy
-- Better time drift handling during playback
-- Reduced timing jitter for smoother key presses
-
-### Version 2.0
-- Full PyQt5 GUI redesign
-- Support for multiple MIDI directories
-- 6 range handling modes
-- Multi-language support (English, Thai)
-- Countdown timer customization
-- Window always-on-top option
-
-### Version 1.0
-- Initial console-based release
 
 ## Built With
 
