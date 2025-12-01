@@ -24,6 +24,8 @@ TRANSLATIONS = {
         'status_mismatch': '⚠ Range mismatch',
         'group_speed': 'Playback Speed',
         'group_range': 'Range Mismatch Handling',
+        'group_directory': 'MIDI Directory',
+        'group_misc': 'Misc Settings',
         'label_mode': 'Mode:',
         'mode_scale': 'Scale notes to fit range',
         'mode_nearest': 'Map to nearest key',
@@ -37,6 +39,8 @@ TRANSLATIONS = {
         'btn_change': 'Change...',
         'btn_add_dir': 'Add',
         'btn_remove_dir': 'Remove',
+        'label_topmost': 'Window Topmost:',
+        'label_countdown': 'Countdown (seconds):',
         'about_title': 'MIDI Player for Games',
         'about_desc': 'A powerful MIDI player designed for playing custom game soundtracks.\n\nFeatures:\n• Multiple keymap profiles\n• Custom playback speeds\n• Flexible note range handling\n• Real-time key mapping\n• Support for .mid and .midi files',
         'btn_github': 'View on GitHub',
@@ -50,6 +54,7 @@ TRANSLATIONS = {
         'msg_error': 'Error',
         'msg_success': 'Success',
         'msg_init_failed': 'Failed to initialize player',
+        'msg_restart_to_change': 'Restart app to apply change',
     },
     'th': {
         'app_title': 'เครื่องเล่น MIDI สำหรับเกม',
@@ -90,9 +95,12 @@ TRANSLATIONS = {
         'mode_target_dur': 'ใช้โหมดกำหนดระยะเวลา (วินาที)',
 
         'group_directory': 'โฟลเดอร์ไฟล์ MIDI',
+        'group_misc': 'การตั้งค่าอื่น ๆ',
         'btn_change': 'เปลี่ยน...',
         'btn_add_dir': 'เพิ่ม',
         'btn_remove_dir': 'ลบ',
+        'label_topmost': 'หน้าต่างอยู่ด้านบน:',
+        'label_countdown': 'นับถอยหลัง (วินาที):',
 
         'about_title': 'เครื่องเล่น MIDI สำหรับเกม',
         'about_desc':
@@ -116,6 +124,7 @@ TRANSLATIONS = {
         'msg_error': 'ข้อผิดพลาด',
         'msg_success': 'สำเร็จ',
         'msg_init_failed': 'ไม่สามารถเริ่มการทำงานของเครื่องเล่นได้',
+        'msg_restart_to_change': 'เริ่มต้นแอปใหม่เพื่อใช้การเปลี่ยนแปลง',
     }
 }
 

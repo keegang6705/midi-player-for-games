@@ -317,6 +317,15 @@ class MidiPlayer:
         if range_mode == 6:
             old_min, old_max = self._find_optimal_range(old_notes, min_key, max_key)
         
+        countdown = self.settings.get("countdown_duration", 3)
+        if countdown > 0:
+            for i in range(countdown, 0, -1):
+                if self.stop_playback:
+                    return False
+                if on_status:
+                    on_status(f"Starting in {i}...")
+                time.sleep(1)
+        
         time_cursor = 0.0
         start_time = time.time()
         total_msgs = sum(1 for _ in midi)

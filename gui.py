@@ -155,7 +155,8 @@ class MidiPlayerGUI(QMainWindow):
         button_layout.addWidget(browse_btn)
         layout.addLayout(button_layout)
         self.progress_bar = QProgressBar()
-        self.progress_bar.setMinimumHeight(25)
+        self.progress_bar.setMinimumHeight(12)
+        self.progress_bar.setMaximumHeight(12)
         self.progress_bar.setVisible(False)
         layout.addWidget(self.progress_bar)
         return widget
@@ -241,12 +242,12 @@ class MidiPlayerGUI(QMainWindow):
         range_layout.addRow(range_label, self.range_combo)
         range_group.setLayout(range_layout)
         layout.addWidget(range_group)
-        misc_group = QGroupBox("Misc Settings")
+        misc_group = QGroupBox(translate('group_misc', self.lang))
         misc_group.setFont(QFont(None, 12))
         misc_layout = QFormLayout()
         topmost_radio_yes = QRadioButton("Yes")
         topmost_radio_no = QRadioButton("No")
-        topmost_group = QButtonGroup()
+        topmost_group = QButtonGroup(self)
         topmost_group.addButton(topmost_radio_yes, 1)
         topmost_group.addButton(topmost_radio_no, 0)
         if self.player.settings.get('window_topmost', False):
@@ -260,14 +261,14 @@ class MidiPlayerGUI(QMainWindow):
         topmost_layout.addWidget(topmost_radio_yes)
         topmost_layout.addWidget(topmost_radio_no)
         topmost_layout.addStretch()
-        misc_layout.addRow("Window Topmost:", topmost_layout)
+        misc_layout.addRow(translate('label_topmost', self.lang), topmost_layout)
         self.countdown_spin = QSpinBox()
         self.countdown_spin.setFont(QFont(None, 11))
         self.countdown_spin.setMinimum(0)
         self.countdown_spin.setMaximum(10)
         self.countdown_spin.setValue(self.player.settings.get('countdown_duration', 3))
         self.countdown_spin.valueChanged.connect(self.on_countdown_changed)
-        misc_layout.addRow("Countdown (seconds):", self.countdown_spin)
+        misc_layout.addRow(translate('label_countdown', self.lang), self.countdown_spin)
         misc_group.setLayout(misc_layout)
         layout.addWidget(misc_group)
         dir_group = QGroupBox(translate('group_directory', self.lang))
@@ -560,7 +561,7 @@ class MidiPlayerGUI(QMainWindow):
             self.lang = new_lang
             self.player.settings['selected_language'] = new_lang
             self.player.save_settings()
-            QMessageBox.information(self, "Info", "Restart app to apply language change")
+            QMessageBox.information(self, "Info", translate('msg_restart_to_change', self.lang) if self.lang == 'en' else "Restart app to apply change")
     
     def on_range_changed(self, index):
         self.player.set_range_mismatch_handling(index + 1)
@@ -569,11 +570,7 @@ class MidiPlayerGUI(QMainWindow):
         is_topmost = button.text() == "Yes"
         self.player.settings['window_topmost'] = is_topmost
         self.player.save_settings()
-        if is_topmost:
-            self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
-        else:
-            self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
-        self.show()
+        QMessageBox.information(self, "Info", translate('msg_restart_to_change', self.lang) if self.lang == 'en' else "Restart app to apply change")
     
     def on_countdown_changed(self, value):
         self.player.settings['countdown_duration'] = value
